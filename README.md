@@ -2,6 +2,22 @@
 
 Full-stack personal finance app. React 19 + Material UI frontend, Node.js + Express 5 + MongoDB backend, JWT auth, Docker Compose for one-command bring-up.
 
+Live demo: https://financial-tracker-web.onrender.com (Render free tier, sleeps after 15 minutes of idle, first hit takes ~30 seconds to wake)
+
+API: https://financial-tracker-api.onrender.com
+
+## Deploy
+
+`render.yaml` defines a Render Blueprint with two services: the Node API and the static React build. One-click deploy:
+
+1. Fork or clone this repo.
+2. In Render, click New, Blueprint, point at the fork.
+3. Render reads `render.yaml`, creates both services. `JWT_SECRET` auto-generates.
+4. Provision a free MongoDB cluster on MongoDB Atlas (M0 tier). Paste the SRV connection string into the Render API service as `MONGODB_URI`.
+5. Set `REACT_APP_API_URL` on the web service to the API URL Render assigned.
+
+The GitHub Actions workflow at `.github/workflows/render-deploy.yml` triggers Render deploy hooks on push to main, if you set the `RENDER_API_DEPLOY_HOOK` and `RENDER_WEB_DEPLOY_HOOK` repo secrets. Without those secrets the workflow runs and exits cleanly.
+
 ## Hero numbers
 
 | Metric | Value |
