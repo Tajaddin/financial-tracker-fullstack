@@ -1,51 +1,96 @@
-# Financial Tracker
+# financial-tracker-fullstack
 
-A full-stack personal finance tracker built with React, Node.js/Express, and MongoDB. Track income and expenses, upload bank statements, and visualize spending with interactive charts.
+Full-stack personal finance app. React 19 + Material UI frontend, Node.js + Express 5 + MongoDB backend, JWT auth, Docker Compose for one-command bring-up.
 
-## Tech Stack
+## Hero numbers
 
-- **Frontend:** React 19, TypeScript, MUI v7, Recharts, React Router v7
-- **Backend:** Node.js, Express 5, MongoDB/Mongoose, JWT authentication
-- **Infrastructure:** Docker Compose, Nginx (production)
+| Metric | Value |
+|---|---|
+| Stack layers | 3 (React 19 frontend, Express 5 API, MongoDB) |
+| Backend models | 5 (User, Account, Transaction, Borrowing, WorkSchedule) |
+| API route groups | 5 matching the models above |
+| Frontend pages | 7 React components (Dashboard, Accounts, Transactions, Borrowings, WorkSchedule, Login, Navigation) |
+| Auth | JWT with bcrypt password hashing |
+| Container | Dockerfile per service plus a docker-compose orchestrator |
 
-## Quick Start
+## What ships
 
-### Prerequisites
-- Node.js 18+
-- MongoDB (local or Docker)
+| Module | Backend route | Frontend page |
+|---|---|---|
+| Accounts | `routes/accounts.js` | `components/Accounts.jsx` |
+| Transactions | `routes/transactions.js` | `components/Transactions.jsx` |
+| Borrowings | `routes/borrowings.js` | `components/Borrowings.jsx` |
+| Work schedule | `routes/workSchedule.js` | `components/WorkSchedule.jsx` |
+| Auth | `routes/auth.js` plus `middleware/` | `components/Login.jsx` |
+| Dashboard | aggregated across routes | `components/Dashboard.jsx` with Recharts |
 
-### Run with Docker Compose
-```bash
+The borrowings model handles money you owe and money owed to you. The work schedule model captures shift income so the dashboard predicts cash inflow alongside actuals.
+
+## Stack
+
+Frontend: React 19, JSX, Material UI v7, Recharts, React Router v7, axios.
+
+Backend: Node.js 18+, Express 5, Mongoose, MongoDB, jsonwebtoken, bcryptjs.
+
+Infrastructure: Docker Compose (mongo, backend, frontend), Dockerfile per service, nginx in front of the build for production.
+
+## Run with Docker Compose
+
+```
 docker-compose up
 ```
 
-### Run locally
+The compose file brings up MongoDB, the API on port 5000, and the React dev server on port 3000.
 
-**Backend:**
-```bash
+## Run locally
+
+Backend:
+
+```
 cd backend
 npm install
-# Edit .env: set MONGODB_URI and JWT_SECRET
+cp .env.example .env       # set MONGODB_URI and JWT_SECRET
 npm start
 ```
 
-**Frontend:**
-```bash
+Frontend:
+
+```
 cd frontend
 npm install
 npm start
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+App at http://localhost:3000.
 
-## Features
+## Repository layout
 
-- JWT-based authentication
-- Income and expense tracking with categories
-- CSV and Excel bank statement import
-- Interactive charts (Recharts)
-- Responsive Material UI design
+```
+financial-tracker-fullstack/
+  backend/
+    server.js              Express app, route mount, JWT middleware
+    models/                User, Account, Transaction, Borrowing, WorkSchedule
+    routes/                One file per resource
+    middleware/            Auth check, error handler
+    utils/                 Helpers
+    Dockerfile
+  frontend/
+    src/
+      App.jsx              Router and protected-route wrapper
+      components/          Dashboard, Accounts, Transactions, Borrowings, WorkSchedule, Login, Navigation
+      services/api.js      axios client with token injection
+    setupTests.js, App.test.js  CRA test scaffolding
+  docker-compose.yml
+  scripts/                 Dev and seed helpers
+```
+
+## Auth flow
+
+1. Frontend posts credentials to `POST /api/auth/login`.
+2. Backend verifies the bcrypt hash and returns a signed JWT.
+3. The axios client in `services/api.js` injects `Authorization: Bearer <jwt>` on every request.
+4. The Express middleware in `backend/middleware/` rejects unauthenticated requests.
 
 ## License
 
-MIT — see [LICENSE](LICENSE)
+MIT, see `LICENSE`.
