@@ -1,5 +1,10 @@
 version: '3.8'
 
+# All credentials below come from env vars with dev-only fallbacks.
+# Copy .env.example to .env and override locally before `docker compose up`.
+# In production (Render etc.) set MONGO_INITDB_ROOT_PASSWORD and JWT_SECRET
+# in the platform's env-var UI; never ship the literal defaults below.
+
 services:
   mongodb:
     image: mongo:latest
@@ -8,8 +13,8 @@ services:
     ports:
       - "27017:27017"
     environment:
-      MONGO_INITDB_ROOT_USERNAME: admin
-      MONGO_INITDB_ROOT_PASSWORD: adminpassword
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:-dev-only-change-me}
       MONGO_INITDB_DATABASE: financial-tracker
     volumes:
       - mongodb_data:/data/db
@@ -24,8 +29,10 @@ services:
       - "5000:5000"
     environment:
       PORT: 5000
-      MONGODB_URI: mongodb://admin:adminpassword@mongodb:27017/financial-tracker?authSource=admin
-      JWT_SECRET: your-super-secret-jwt-key-change-this-in-production
+      MONGODB_URI: mongodb://${MONGO_INITDB_ROOT_USERNAME:-admin}:${MONGO_INITDB_ROOT_PASSWORD:-dev-only-change-me}@mongodb:27017/financial-tracker?authSource=admin
+      JWT_SECRET: ${JWT_SECRET:-dev-only-change-me-in-prod}
+      NODE_ENV: ${NODE_ENV:-development}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000}
     depends_on:
       - mongodb
     volumes:
