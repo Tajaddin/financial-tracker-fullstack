@@ -45,8 +45,15 @@ if (process.env.NODE_ENV === 'production') {
 
 const app = express();
 
-// Middleware
-app.use(cors());
+// Middleware -- CORS is explicit-allowlist via CORS_ALLOWED_ORIGINS
+// (comma-separated). Defaults to localhost:3000 for dev so `npm run dev`
+// works without extra setup. Never leave this as the default in production
+// -- list the real frontend origin(s) in the env instead.
+const corsOrigins = (process.env.CORS_ALLOWED_ORIGINS || 'http://localhost:3000')
+  .split(',')
+  .map(s => s.trim())
+  .filter(Boolean);
+app.use(cors({ origin: corsOrigins, credentials: true }));
 app.use(express.json());
 app.use('/uploads', express.static('uploads'));
 
