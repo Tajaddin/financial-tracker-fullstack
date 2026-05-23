@@ -30,6 +30,19 @@ console.log('PORT:', process.env.PORT);
 console.log('MONGODB_URI:', process.env.MONGODB_URI ? '*** loaded ***' : '!! NOT FOUND !!');
 console.log('JWT_SECRET:', process.env.JWT_SECRET ? '*** loaded ***' : '!! NOT FOUND !!');
 
+// Production guard: refuse to start in production without a real JWT_SECRET.
+// The dev fallback in docker-compose.yml is a known placeholder string.
+const DEV_JWT_FALLBACK = 'dev-only-change-me-in-prod';
+if (process.env.NODE_ENV === 'production') {
+  if (!process.env.JWT_SECRET || process.env.JWT_SECRET === DEV_JWT_FALLBACK) {
+    console.error(
+      'FATAL: JWT_SECRET must be set to a real value when NODE_ENV=production. ' +
+      'Generate one with `openssl rand -hex 32` and set it in your platform env.'
+    );
+    process.exit(1);
+  }
+}
+
 const app = express();
 
 // Middleware
