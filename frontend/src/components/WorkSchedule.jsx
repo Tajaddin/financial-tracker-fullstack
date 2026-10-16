@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Button,
@@ -49,27 +49,19 @@ function WorkSchedule() {
     accountId: '',
   });
 
-  useEffect(() => {
-    fetchAccounts();
-  }, []);
-
-  useEffect(() => {
-    fetchSchedule();
-  }, [selectedMonth]);
-
-  const fetchAccounts = async () => {
+  const fetchAccounts = useCallback(async () => {
     try {
       const response = await accountsApi.getAll();
       setAccountsList(response.data);
-      if (response.data.length > 0 && !formData.accountId) {
-        setFormData(prev => ({ ...prev, accountId: response.data[0]._id }));
+      if (response.data.length > 0) {
+        setFormData(prev => (prev.accountId ? prev : { ...prev, accountId: response.data[0]._id }));
       }
     } catch (error) {
       console.error('Error fetching accounts:', error);
     }
-  };
+  }, []);
 
-  const fetchSchedule = async () => {
+  const fetchSchedule = useCallback(async () => {
     try {
       const [year, month] = selectedMonth.split('-');
       const startDate = startOfMonth(new Date(year, month - 1));
@@ -83,7 +75,15 @@ function WorkSchedule() {
     } catch (error) {
       console.error('Error fetching schedule:', error);
     }
-  };
+  }, [selectedMonth]);
+
+  useEffect(() => {
+    fetchAccounts();
+  }, [fetchAccounts]);
+
+  useEffect(() => {
+    fetchSchedule();
+  }, [fetchSchedule]);
 
   const handleOpenDialog = () => {
     setOpenDialog(true);

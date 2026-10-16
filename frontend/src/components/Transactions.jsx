@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Button,
@@ -17,7 +17,6 @@ import {
   TableHead,
   TableRow,
   Paper,
-  IconButton,
   Chip,
   InputAdornment,
   FormControl,
@@ -29,7 +28,6 @@ import {
   Add as AddIcon,
   FileUpload as FileUploadIcon,
   Search as SearchIcon,
-  FilterList as FilterListIcon,
 } from '@mui/icons-material';
 import { format } from 'date-fns';
 import { transactions, accounts as accountsApi } from '../services/api';
@@ -73,25 +71,16 @@ function Transactions() {
     fileType: '',
   });
 
-  useEffect(() => {
-    fetchAccounts();
-    fetchTransactions();
-  }, []);
-
-  useEffect(() => {
-    fetchTransactions();
-  }, [filters]);
-
-  const fetchAccounts = async () => {
+  const fetchAccounts = useCallback(async () => {
     try {
       const response = await accountsApi.getAll();
       setAccountsList(response.data);
     } catch (error) {
       console.error('Error fetching accounts:', error);
     }
-  };
+  }, []);
 
-  const fetchTransactions = async () => {
+  const fetchTransactions = useCallback(async () => {
     try {
       const params = {};
       if (filters.accountId) params.accountId = filters.accountId;
@@ -113,7 +102,15 @@ function Transactions() {
     } catch (error) {
       console.error('Error fetching transactions:', error);
     }
-  };
+  }, [filters]);
+
+  useEffect(() => {
+    fetchAccounts();
+  }, [fetchAccounts]);
+
+  useEffect(() => {
+    fetchTransactions();
+  }, [fetchTransactions]);
 
   const handleOpenDialog = () => {
     setFormData({

@@ -78,30 +78,39 @@ router.post('/import', auth, upload.single('statement'), async (req, res) => {
   try {
     const { accountId, fileType } = req.body;
     const filePath = req.file.path;
-    
+
+    // Only import into an account the caller owns, in that account's currency.
+    const account = await Account.findOne({ _id: accountId, user: req.userId });
+    if (!account) {
+      return res.status(404).json({ error: 'Account not found' });
+    }
+
     const data = await parseStatement(filePath, fileType);
-    
-    // Process parsed data and create transactions
-    // This is a simplified example - you'll need to adapt based on your bank's format
+
+    // Map the statement's columns to transaction fields
     const transactions = [];
+    let net = 0;
     for (const row of data) {
-      // Map your bank's columns to transaction fields
-      const transaction = new Transaction({
+      const amount = Math.abs(row.amount);
+      const type = row.amount > 0 ? 'income' : 'expense';
+      net += type === 'income' ? amount : -amount;
+      transactions.push(new Transaction({
         user: req.userId,
         account: accountId,
-        type: row.amount > 0 ? 'income' : 'expense',
+        type,
         category: row.category || 'Uncategorized',
-        amount: Math.abs(row.amount),
-        originalAmount: Math.abs(row.amount),
-        originalCurrency: 'USD', // Adjust based on account
-        amountInUSD: Math.abs(row.amount),
+        amount,
+        originalAmount: amount,
+        originalCurrency: account.currency,
+        amountInUSD: convertToUSD(amount, account.currency),
         description: row.description,
         date: new Date(row.date),
-      });
-      transactions.push(transaction);
+      }));
     }
-    
+
     await Transaction.insertMany(transactions);
+    account.balance += net;
+    await account.save();
     res.json({ message: `Imported ${transactions.length} transactions` });
   } catch (error) {
     res.status(500).json({ error: error.message });

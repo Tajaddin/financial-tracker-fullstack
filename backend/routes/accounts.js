@@ -2,12 +2,14 @@ const express = require('express');
 const router = express.Router();
 const Account = require('../models/Account');
 const auth = require('../middleware/auth');
+const { convertToUSD } = require('../utils/currencyConverter');
 
 // Get all accounts
 router.get('/', auth, async (req, res) => {
   try {
     const accounts = await Account.find({ user: req.userId });
-    res.json(accounts);
+    // balanceInUSD lets the dashboard total accounts held in different currencies.
+    res.json(accounts.map((a) => ({ ...a.toObject(), balanceInUSD: convertToUSD(a.balance, a.currency) })));
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

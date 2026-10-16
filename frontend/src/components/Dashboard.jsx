@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Grid,
   Paper,
@@ -35,9 +35,44 @@ import {
   Pie,
   Cell,
 } from 'recharts';
-import { accounts, transactions, borrowings, workSchedule } from '../services/api';
+import { accounts, transactions, borrowings } from '../services/api';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
+
+const prepareMonthlyData = (transactions) => {
+  const grouped = transactions.reduce((acc, t) => {
+    const day = format(new Date(t.date), 'MMM dd');
+    if (!acc[day]) {
+      acc[day] = { date: day, income: 0, expense: 0 };
+    }
+    if (t.type === 'income') {
+      acc[day].income += t.amountInUSD;
+    } else if (t.type === 'expense') {
+      acc[day].expense += t.amountInUSD;
+    }
+    return acc;
+  }, {});
+
+  return Object.values(grouped).sort((a, b) => 
+    new Date(a.date) - new Date(b.date)
+  );
+};
+
+const prepareCategoryData = (transactions) => {
+  const expenses = transactions.filter(t => t.type === 'expense');
+  const grouped = expenses.reduce((acc, t) => {
+    if (!acc[t.category]) {
+      acc[t.category] = 0;
+    }
+    acc[t.category] += t.amountInUSD;
+    return acc;
+  }, {});
+
+  return Object.entries(grouped)
+    .map(([name, value]) => ({ name, value }))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 5);
+};
 
 function Dashboard() {
   const [loading, setLoading] = useState(true);
@@ -51,33 +86,24 @@ function Dashboard() {
     categoryData: [],
   });
 
-  useEffect(() => {
-    fetchDashboardData();
-  }, []);
-
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
     try {
       setLoading(true);
-      
-      // Fetch all data
-      const [accountsRes, transactionsRes, borrowingsRes, workRes] = await Promise.all([
+
+      const [accountsRes, transactionsRes, borrowingsRes] = await Promise.all([
         accounts.getAll(),
         transactions.getAll({
           startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
           endDate: new Date(),
         }),
         borrowings.getAll(),
-        workSchedule.getAll({
-          startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
-          endDate: new Date(),
-        }),
       ]);
 
-      // Calculate total balance (converting all to USD)
-      const totalBalance = accountsRes.data.reduce((sum, account) => {
-        // You'll need to convert based on currency
-        return sum + account.balance;
-      }, 0);
+      // Total balance in USD; the API converts each account from its own currency.
+      const totalBalance = accountsRes.data.reduce(
+        (sum, account) => sum + (account.balanceInUSD ?? account.balance),
+        0
+      );
 
       // Calculate monthly income and expenses
       const monthlyIncome = transactionsRes.data
@@ -118,42 +144,11 @@ function Dashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const prepareMonthlyData = (transactions) => {
-    const grouped = transactions.reduce((acc, t) => {
-      const day = format(new Date(t.date), 'MMM dd');
-      if (!acc[day]) {
-        acc[day] = { date: day, income: 0, expense: 0 };
-      }
-      if (t.type === 'income') {
-        acc[day].income += t.amountInUSD;
-      } else if (t.type === 'expense') {
-        acc[day].expense += t.amountInUSD;
-      }
-      return acc;
-    }, {});
-
-    return Object.values(grouped).sort((a, b) => 
-      new Date(a.date) - new Date(b.date)
-    );
-  };
-
-  const prepareCategoryData = (transactions) => {
-    const expenses = transactions.filter(t => t.type === 'expense');
-    const grouped = expenses.reduce((acc, t) => {
-      if (!acc[t.category]) {
-        acc[t.category] = 0;
-      }
-      acc[t.category] += t.amountInUSD;
-      return acc;
-    }, {});
-
-    return Object.entries(grouped)
-      .map(([name, value]) => ({ name, value }))
-      .sort((a, b) => b.value - a.value)
-      .slice(0, 5);
-  };
+  useEffect(() => {
+    fetchDashboardData();
+  }, [fetchDashboardData]);
 
   if (loading) {
     return (
