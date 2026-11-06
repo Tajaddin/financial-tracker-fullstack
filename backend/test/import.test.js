@@ -32,7 +32,7 @@ async function setup() {
     const res = await request(app).get('/api/accounts').set('Authorization', `Bearer ${token}`);
     return res.body[0].balance;
   };
-  return { app, importStatement, balance };
+  return { app, token, account, importStatement, balance };
 }
 
 test('imports a CSV statement and applies it to the balance', async () => {
@@ -104,4 +104,26 @@ test('does not serve the uploads directory', async (t) => {
 
   const res = await request(app).get('/uploads/probe-statement.csv');
   assert.equal(res.status, 404);
+});
+
+test('rejects form fields the import form never sends with 400', async () => {
+  const { app, token, account, balance } = await setup();
+  const post = () =>
+    request(app)
+      .post('/api/transactions/import')
+      .set('Authorization', `Bearer ${token}`)
+      .attach('statement', Buffer.from(CSV), 'statement.csv');
+  const cases = {
+    'operator in a field name': () => post().field('accountId[$ne]', '000000000000000000000000').field('fileType', 'csv'),
+    'array index in a field name': () => post().field('accountId[5000000]', account._id).field('fileType', 'csv'),
+    'malformed accountId': () => post().field('accountId', 'not-an-id').field('fileType', 'csv'),
+    'repeated accountId': () => post().field('accountId', account._id).field('accountId', account._id).field('fileType', 'csv'),
+    'large extra field': () => post().field('accountId', account._id).field('fileType', 'csv').field('note', 'x'.repeat(1024 * 1024)),
+  };
+  const statuses = {};
+  for (const [name, send] of Object.entries(cases)) statuses[name] = (await send()).status;
+  assert.deepEqual(statuses, Object.fromEntries(Object.keys(cases).map((name) => [name, 400])));
+  assert.equal(await balance(), 0);
+  const list = await request(app).get('/api/transactions').set('Authorization', `Bearer ${token}`);
+  assert.deepEqual(list.body, []);
 });
