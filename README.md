@@ -46,7 +46,7 @@ The borrowings model handles money you owe and money owed to you. The work sched
 
 Frontend: React 19, JSX, Material UI v7, Recharts, React Router v7, axios.
 
-Backend: Node.js 18+, Express 5, Mongoose, MongoDB, jsonwebtoken, bcryptjs.
+Backend: Node.js 18+ (22+ for `npm test`), Express 5, Mongoose, MongoDB, jsonwebtoken, bcryptjs.
 
 Infrastructure: Docker Compose (mongo, backend, frontend), Dockerfile per service, nginx in front of the build for production.
 
