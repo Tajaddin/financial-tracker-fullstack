@@ -90,7 +90,7 @@ financial-tracker-fullstack/
     server.js              Config checks, MongoDB connection, listen
     models/                User, Account, Transaction, Borrowing, WorkSchedule
     routes/                One file per resource
-    middleware/            Auth check, error handler
+    middleware/            JWT check, security headers, rate limits, body sanitizing
     utils/                 Helpers
     test/                  API tests (node:test, supertest, mongodb-memory-server)
     Dockerfile
