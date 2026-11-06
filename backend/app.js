@@ -14,7 +14,6 @@ function createApp() {
     .filter(Boolean);
   app.use(cors({ origin: corsOrigins, credentials: true }));
   app.use(express.json());
-  app.use('/uploads', express.static('uploads'));
 
   // Routes
   app.use('/api/auth', require('./routes/auth'));

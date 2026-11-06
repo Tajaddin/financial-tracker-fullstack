@@ -7,7 +7,24 @@ const auth = require('../middleware/auth');
 const { convertToUSD } = require('../utils/currencyConverter');
 const { parseStatement } = require('../utils/statementParser');
 
-const upload = multer({ dest: 'uploads/' });
+const MAX_STATEMENT_MB = 2;
+
+// Statements are parsed in memory and never written to disk.
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_STATEMENT_MB * 1024 * 1024, files: 1 },
+});
+
+const receiveStatement = (req, res, next) => {
+  upload.single('statement')(req, res, (err) => {
+    if (err?.code === 'LIMIT_FILE_SIZE') {
+      return res.status(413).json({ error: `Statement files are limited to ${MAX_STATEMENT_MB} MB` });
+    }
+    if (err) return res.status(400).json({ error: err.message });
+    if (!req.file) return res.status(400).json({ error: 'No statement file uploaded' });
+    next();
+  });
+};
 
 // Get all transactions
 router.get('/', auth, async (req, res) => {
@@ -74,10 +91,9 @@ router.post('/', auth, async (req, res) => {
 });
 
 // Import bank statement
-router.post('/import', auth, upload.single('statement'), async (req, res) => {
+router.post('/import', auth, receiveStatement, async (req, res) => {
   try {
     const { accountId, fileType } = req.body;
-    const filePath = req.file.path;
 
     // Only import into an account the caller owns, in that account's currency.
     const account = await Account.findOne({ _id: accountId, user: req.userId });
@@ -85,7 +101,7 @@ router.post('/import', auth, upload.single('statement'), async (req, res) => {
       return res.status(404).json({ error: 'Account not found' });
     }
 
-    const data = await parseStatement(filePath, fileType);
+    const data = await parseStatement(req.file.buffer, fileType);
 
     // Map the statement's columns to transaction fields
     const transactions = [];

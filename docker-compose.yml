@@ -38,7 +38,6 @@ services:
     volumes:
       - ./backend:/app
       - /app/node_modules
-      - uploads:/app/uploads
     networks:
       - financial-tracker-network
 
@@ -60,7 +59,6 @@ services:
 
 volumes:
   mongodb_data:
-  uploads:
 
 networks:
   financial-tracker-network:
