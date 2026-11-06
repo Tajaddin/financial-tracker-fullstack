@@ -17,17 +17,19 @@ module.exports = {
       next();
     });
 
-    // Rate limiting: 100 requests per 15 minutes per IP, and 5 failed
-    // auth attempts per 15 minutes per IP.
+    // Rate limiting: 1000 requests per 15 minutes per IP, enough for the
+    // SPA's refetch after every change, and 5 failed auth attempts per 15
+    // minutes per IP. Errors are JSON so the UI can show them.
     app.use('/api/', rateLimit({
       windowMs: 15 * 60 * 1000,
-      max: 100,
-      message: 'Too many requests from this IP',
+      max: 1000,
+      message: { error: 'Too many requests from this IP, try again later' },
     }));
     app.use('/api/auth/', rateLimit({
       windowMs: 15 * 60 * 1000,
       max: 5,
       skipSuccessfulRequests: true,
+      message: { error: 'Too many failed attempts, try again later' },
     }));
   },
 };

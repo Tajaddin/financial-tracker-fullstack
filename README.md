@@ -112,6 +112,8 @@ financial-tracker-fullstack/
 4. The Express middleware in `backend/middleware/` rejects unauthenticated requests, tokens issued more than 12 hours ago (including old tokens without an expiry) and tokens signed with any other algorithm.
 5. On a 401 the client drops the stored token and returns to the login screen.
 
+Rate limits, per client IP: 1000 API requests and 5 failed logins or registrations per 15-minute window. Over either limit the API answers 429 with a JSON `error`.
+
 ## License
 
 MIT, see `LICENSE`.

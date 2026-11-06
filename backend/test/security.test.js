@@ -28,7 +28,19 @@ test('failed logins are rate limited per client', async () => {
     request(app).post('/api/auth/login').send({ email: 'ana@example.com', password: 'guess' });
 
   for (let i = 0; i < 5; i += 1) assert.equal((await attempt()).status, 401);
-  assert.equal((await attempt()).status, 429);
+  const limited = await attempt();
+  assert.equal(limited.status, 429);
+  assert.match(limited.body.error, /too many/i);
+});
+
+test('a busy session stays under the general rate limit', async () => {
+  const app = createApp();
+  const { token } = await registerUser(app);
+  const statuses = new Set();
+  for (let i = 0; i < 150; i += 1) {
+    statuses.add((await request(app).get('/api/accounts').set('Authorization', `Bearer ${token}`)).status);
+  }
+  assert.deepEqual([...statuses], [200]);
 });
 
 test('login does not accept query operators in place of an email', async () => {
