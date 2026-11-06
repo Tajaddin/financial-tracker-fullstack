@@ -53,10 +53,11 @@ Infrastructure: Docker Compose (mongo, backend, frontend), Dockerfile per servic
 ## Run with Docker Compose
 
 ```
-docker-compose up
+cp .env.example .env       # set MONGO_INITDB_ROOT_PASSWORD and JWT_SECRET
+docker compose up
 ```
 
-The compose file brings up MongoDB, the API on port 5000, and the React dev server on port 3000.
+The compose file brings up MongoDB (published on 127.0.0.1 only), the API on port 5000 with NODE_ENV=production, and the React dev server on port 3000. It refuses to start until the MongoDB credentials and JWT_SECRET are set.
 
 ## Run locally
 
@@ -65,7 +66,7 @@ Backend:
 ```
 cd backend
 npm install
-cp .env.example .env       # set MONGODB_URI and JWT_SECRET
+cp ../.env.example .env    # set MONGODB_URI and JWT_SECRET
 npm start
 npm test                   # API tests against an in-memory MongoDB
 ```
