@@ -56,3 +56,15 @@ test('tokens signed with another algorithm are refused', async () => {
   const res = await request(app).get('/api/accounts').set('Authorization', `Bearer ${token}`);
   assert.equal(res.status, 401);
 });
+
+test('tokens without an expiry stop working 12 hours after they were issued', async () => {
+  const app = createApp();
+  const { user } = await registerUser(app);
+  const get = (token) => request(app).get('/api/accounts').set('Authorization', `Bearer ${token}`);
+  const now = Math.floor(Date.now() / 1000);
+  const sign = (payload, options) => jwt.sign(payload, process.env.JWT_SECRET, { algorithm: 'HS256', ...options });
+
+  assert.equal((await get(sign({ userId: user.id, iat: now - 60 }))).status, 200);
+  assert.equal((await get(sign({ userId: user.id, iat: now - 13 * 60 * 60 }))).status, 401);
+  assert.equal((await get(sign({ userId: user.id }, { noTimestamp: true }))).status, 401);
+});

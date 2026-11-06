@@ -109,7 +109,7 @@ financial-tracker-fullstack/
 1. Frontend posts credentials to `POST /api/auth/login`.
 2. Backend verifies the bcrypt hash and returns an HS256 JWT that expires after 12 hours.
 3. The axios client in `services/api.js` injects `Authorization: Bearer <jwt>` on every request.
-4. The Express middleware in `backend/middleware/` rejects unauthenticated requests and tokens signed with any other algorithm.
+4. The Express middleware in `backend/middleware/` rejects unauthenticated requests, tokens issued more than 12 hours ago (including old tokens without an expiry) and tokens signed with any other algorithm.
 5. On a 401 the client drops the stored token and returns to the login screen.
 
 ## License
