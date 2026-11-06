@@ -1,8 +1,14 @@
 const express = require('express');
 const cors = require('cors');
+const { setupSecurity } = require('./middleware/security');
 
 function createApp() {
   const app = express();
+
+  // Behind a reverse proxy (Render), set TRUST_PROXY to the number of proxy
+  // hops so req.ip is the client's address; otherwise every client shares
+  // one rate-limit bucket.
+  if (process.env.TRUST_PROXY) app.set('trust proxy', Number(process.env.TRUST_PROXY));
 
   // Middleware -- CORS is explicit-allowlist via CORS_ALLOWED_ORIGINS
   // (comma-separated). Defaults to localhost:3000 for dev so `npm run dev`
@@ -14,6 +20,7 @@ function createApp() {
     .filter(Boolean);
   app.use(cors({ origin: corsOrigins, credentials: true }));
   app.use(express.json());
+  setupSecurity(app);
 
   // Routes
   app.use('/api/auth', require('./routes/auth'));
