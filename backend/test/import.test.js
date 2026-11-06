@@ -2,6 +2,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { test } = require('node:test');
+const ExcelJS = require('exceljs');
 const { createApp, useDatabase, registerUser, createAccount, request } = require('./helpers');
 
 useDatabase();
@@ -40,6 +41,35 @@ test('imports a CSV statement and applies it to the balance', async () => {
   assert.equal(res.status, 200, JSON.stringify(res.body));
   assert.equal(res.body.message, 'Imported 2 transactions');
   assert.ok(Math.abs((await balance()) - 1454.8) < 1e-9);
+});
+
+test('imports an Excel statement with real dates and formula amounts', async () => {
+  const { app, importStatement, balance } = await setup();
+  const workbook = new ExcelJS.Workbook();
+  const sheet = workbook.addWorksheet('Statement');
+  sheet.addRow(['date', 'description', 'amount', 'category']);
+  sheet.addRow([new Date('2026-01-05T00:00:00Z'), 'Salary', { formula: '1000+500', result: 1500 }, 'Income']);
+  sheet.addRow([new Date('2026-01-06T00:00:00Z'), 'Groceries', -45.2, 'Food']);
+  const file = Buffer.from(await workbook.xlsx.writeBuffer());
+
+  const res = await importStatement(file, 'statement.xlsx', 'xlsx');
+  assert.equal(res.status, 200, JSON.stringify(res.body));
+  assert.equal(res.body.message, 'Imported 2 transactions');
+  assert.ok(Math.abs((await balance()) - 1454.8) < 1e-9);
+
+  const token = res.request.header.Authorization;
+  const list = await request(app).get('/api/transactions').set('Authorization', token);
+  const dates = list.body.map((t) => t.date.slice(0, 10)).sort();
+  assert.deepEqual(dates, ['2026-01-05', '2026-01-06']);
+});
+
+test('rejects formats it cannot read with 400', async () => {
+  const { importStatement, balance } = await setup();
+  for (const [name, type] of [['statement.pdf', 'pdf'], ['statement.xls', 'xls'], ['statement.xlsx', 'xlsx']]) {
+    const res = await importStatement(Buffer.from('%PDF-1.4 not a spreadsheet'), name, type);
+    assert.equal(res.status, 400, `${type}: ${JSON.stringify(res.body)}`);
+  }
+  assert.equal(await balance(), 0);
 });
 
 test('rejects a statement over the size limit with 413', async () => {

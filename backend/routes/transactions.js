@@ -101,7 +101,12 @@ router.post('/import', auth, receiveStatement, async (req, res) => {
       return res.status(404).json({ error: 'Account not found' });
     }
 
-    const data = await parseStatement(req.file.buffer, fileType);
+    let data;
+    try {
+      data = await parseStatement(req.file.buffer, fileType);
+    } catch (error) {
+      return res.status(400).json({ error: `Could not read the statement: ${error.message}` });
+    }
 
     // Map the statement's columns to transaction fields
     const transactions = [];
