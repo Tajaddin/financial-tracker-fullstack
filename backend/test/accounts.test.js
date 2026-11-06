@@ -79,3 +79,25 @@ test('creating an account ignores fields the form does not edit', async () => {
   const account = await createAccount(app, token, { createdAt: '2000-01-01T00:00:00.000Z' });
   assert.notEqual(account.createdAt, '2000-01-01T00:00:00.000Z');
 });
+
+test('values and ids that cannot be cast get 400', async () => {
+  const app = createApp();
+  const { token } = await registerUser(app);
+  const account = await createAccount(app, token, { balance: 100 });
+  const send = (method, path, body) =>
+    request(app)[method](`/api/accounts${path}`).set('Authorization', `Bearer ${token}`).send(body);
+  const fields = { name: 'Savings', bankName: 'Test Bank', accountNumber: '0002', currency: 'USD' };
+
+  const statuses = {
+    'create with a non-numeric balance': (await send('post', '', { ...fields, balance: 'abc' })).status,
+    'create with an unsupported currency': (await send('post', '', { ...fields, currency: 'GBP' })).status,
+    'update with a non-numeric balance': (await send('put', `/${account._id}`, { balance: 'abc' })).status,
+    'update a malformed id': (await send('put', '/not-an-id', { name: 'x' })).status,
+    'delete a malformed id': (await send('delete', '/not-an-id')).status,
+  };
+  assert.deepEqual(statuses, Object.fromEntries(Object.keys(statuses).map((name) => [name, 400])));
+
+  const list = await request(app).get('/api/accounts').set('Authorization', `Bearer ${token}`);
+  assert.equal(list.body.length, 1);
+  assert.equal(list.body[0].balance, 100);
+});

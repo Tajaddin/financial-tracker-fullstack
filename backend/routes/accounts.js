@@ -9,6 +9,9 @@ const EDITABLE_FIELDS = ['name', 'bankName', 'accountNumber', 'currency', 'balan
 const editableFields = (body = {}) =>
   Object.fromEntries(EDITABLE_FIELDS.filter((f) => body[f] !== undefined).map((f) => [f, body[f]]));
 
+// A value or id Mongoose cannot cast or validate is the client's mistake.
+const errorStatus = (error) => (['ValidationError', 'CastError'].includes(error.name) ? 400 : 500);
+
 // Get all accounts
 router.get('/', auth, async (req, res) => {
   try {
@@ -30,7 +33,7 @@ router.post('/', auth, async (req, res) => {
     await account.save();
     res.json(account);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(errorStatus(error)).json({ error: error.message });
   }
 });
 
@@ -47,7 +50,7 @@ router.put('/:id', auth, async (req, res) => {
     }
     res.json(account);
   } catch (error) {
-    res.status(error.name === 'ValidationError' ? 400 : 500).json({ error: error.message });
+    res.status(errorStatus(error)).json({ error: error.message });
   }
 });
 
@@ -57,7 +60,7 @@ router.delete('/:id', auth, async (req, res) => {
     await Account.findOneAndDelete({ _id: req.params.id, user: req.userId });
     res.json({ message: 'Account deleted' });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(errorStatus(error)).json({ error: error.message });
   }
 });
 
