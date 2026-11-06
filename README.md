@@ -67,6 +67,7 @@ cd backend
 npm install
 cp .env.example .env       # set MONGODB_URI and JWT_SECRET
 npm start
+npm test                   # API tests against an in-memory MongoDB
 ```
 
 Frontend:
@@ -84,11 +85,13 @@ App at http://localhost:3000.
 ```
 financial-tracker-fullstack/
   backend/
-    server.js              Express app, route mount, JWT middleware
+    app.js                 Express app and route mounts
+    server.js              Config checks, MongoDB connection, listen
     models/                User, Account, Transaction, Borrowing, WorkSchedule
     routes/                One file per resource
     middleware/            Auth check, error handler
     utils/                 Helpers
+    test/                  API tests (node:test, supertest, mongodb-memory-server)
     Dockerfile
   frontend/
     src/
