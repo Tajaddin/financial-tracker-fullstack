@@ -3,6 +3,9 @@ const router = express.Router();
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
+const signToken = (user) =>
+  jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { algorithm: 'HS256', expiresIn: '12h' });
+
 // Register
 router.post('/register', async (req, res) => {
   try {
@@ -19,7 +22,7 @@ router.post('/register', async (req, res) => {
     const user = new User({ email, password, name });
     await user.save();
 
-    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET);
+    const token = signToken(user);
     res.json({ token, user: { id: user._id, email: user.email, name: user.name } });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -44,7 +47,7 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET);
+    const token = signToken(user);
     res.json({ token, user: { id: user._id, email: user.email, name: user.name } });
   } catch (error) {
     res.status(500).json({ error: error.message });

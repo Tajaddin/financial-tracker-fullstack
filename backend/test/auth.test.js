@@ -1,5 +1,6 @@
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
+const jwt = require('jsonwebtoken');
 const { createApp, useDatabase, registerUser, request } = require('./helpers');
 
 useDatabase();
@@ -39,4 +40,19 @@ test('protected routes need a valid token', async () => {
     .get('/api/accounts')
     .set('Authorization', 'Bearer not-a-jwt');
   assert.equal(forged.status, 401);
+});
+
+test('issued tokens expire after 12 hours', async () => {
+  const { token } = await registerUser(createApp());
+  const { iat, exp } = jwt.decode(token);
+  assert.equal(exp - iat, 12 * 60 * 60);
+});
+
+test('tokens signed with another algorithm are refused', async () => {
+  const app = createApp();
+  const { user } = await registerUser(app);
+  const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { algorithm: 'HS512', expiresIn: '1h' });
+
+  const res = await request(app).get('/api/accounts').set('Authorization', `Bearer ${token}`);
+  assert.equal(res.status, 401);
 });
