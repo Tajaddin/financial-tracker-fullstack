@@ -174,7 +174,7 @@ function Transactions() {
       alert('Transactions imported successfully!');
     } catch (error) {
       console.error('Error importing transactions:', error);
-      alert('Error importing transactions');
+      alert(error.response?.data?.error || 'Error importing transactions');
     }
   };
 
@@ -466,7 +466,7 @@ function Transactions() {
           </TextField>
           <Box mt={2}>
             <input
-              accept=".csv,.xlsx,.xls,.pdf"
+              accept=".csv,.xlsx"
               style={{ display: 'none' }}
               id="file-upload"
               type="file"
@@ -479,7 +479,7 @@ function Transactions() {
             </label>
           </Box>
           <Typography variant="caption" color="textSecondary" mt={1}>
-            Supported formats: CSV, Excel (.xlsx, .xls), PDF
+            Supported formats: CSV, Excel (.xlsx), up to 2 MB
           </Typography>
         </DialogContent>
         <DialogActions>

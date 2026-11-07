@@ -4,6 +4,14 @@ const Account = require('../models/Account');
 const auth = require('../middleware/auth');
 const { convertToUSD } = require('../utils/currencyConverter');
 
+// The fields the account form edits; never user, _id or createdAt.
+const EDITABLE_FIELDS = ['name', 'bankName', 'accountNumber', 'currency', 'balance'];
+const editableFields = (body = {}) =>
+  Object.fromEntries(EDITABLE_FIELDS.filter((f) => body[f] !== undefined).map((f) => [f, body[f]]));
+
+// A value or id Mongoose cannot cast or validate is the client's mistake.
+const errorStatus = (error) => (['ValidationError', 'CastError'].includes(error.name) ? 400 : 500);
+
 // Get all accounts
 router.get('/', auth, async (req, res) => {
   try {
@@ -19,13 +27,13 @@ router.get('/', auth, async (req, res) => {
 router.post('/', auth, async (req, res) => {
   try {
     const account = new Account({
-      ...req.body,
+      ...editableFields(req.body),
       user: req.userId,
     });
     await account.save();
     res.json(account);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(errorStatus(error)).json({ error: error.message });
   }
 });
 
@@ -34,12 +42,15 @@ router.put('/:id', auth, async (req, res) => {
   try {
     const account = await Account.findOneAndUpdate(
       { _id: req.params.id, user: req.userId },
-      req.body,
-      { new: true }
+      editableFields(req.body),
+      { new: true, runValidators: true }
     );
+    if (!account) {
+      return res.status(404).json({ error: 'Account not found' });
+    }
     res.json(account);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(errorStatus(error)).json({ error: error.message });
   }
 });
 
@@ -49,7 +60,7 @@ router.delete('/:id', auth, async (req, res) => {
     await Account.findOneAndDelete({ _id: req.params.id, user: req.userId });
     res.json({ message: 'Account deleted' });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(errorStatus(error)).json({ error: error.message });
   }
 });
 

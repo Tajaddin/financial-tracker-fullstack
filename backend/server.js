@@ -1,9 +1,8 @@
 const path = require('path');
 const fs = require('fs');  // Added for file checks
-const express = require('express');
 const mongoose = require('mongoose');
-const cors = require('cors');
 const dotenv = require('dotenv');
+const { createApp } = require('./app');
 
 // Debug: Current directory and .env path
 const envPath = path.resolve(__dirname, '.env');
@@ -31,7 +30,7 @@ console.log('MONGODB_URI:', process.env.MONGODB_URI ? '*** loaded ***' : '!! NOT
 console.log('JWT_SECRET:', process.env.JWT_SECRET ? '*** loaded ***' : '!! NOT FOUND !!');
 
 // Production guard: refuse to start in production without a real JWT_SECRET.
-// The dev fallback in docker-compose.yml is a known placeholder string.
+// Also reject the placeholder the old docker-compose.yml used as a fallback.
 const DEV_JWT_FALLBACK = 'dev-only-change-me-in-prod';
 if (process.env.NODE_ENV === 'production') {
   if (!process.env.JWT_SECRET || process.env.JWT_SECRET === DEV_JWT_FALLBACK) {
@@ -43,26 +42,7 @@ if (process.env.NODE_ENV === 'production') {
   }
 }
 
-const app = express();
-
-// Middleware -- CORS is explicit-allowlist via CORS_ALLOWED_ORIGINS
-// (comma-separated). Defaults to localhost:3000 for dev so `npm run dev`
-// works without extra setup. Never leave this as the default in production
-// -- list the real frontend origin(s) in the env instead.
-const corsOrigins = (process.env.CORS_ALLOWED_ORIGINS || 'http://localhost:3000')
-  .split(',')
-  .map(s => s.trim())
-  .filter(Boolean);
-app.use(cors({ origin: corsOrigins, credentials: true }));
-app.use(express.json());
-app.use('/uploads', express.static('uploads'));
-
-// Routes
-app.use('/api/auth', require('./routes/auth'));
-app.use('/api/accounts', require('./routes/accounts'));
-app.use('/api/transactions', require('./routes/transactions'));
-app.use('/api/borrowings', require('./routes/borrowings'));
-app.use('/api/work-schedule', require('./routes/workSchedule'));
+const app = createApp();
 
 // MongoDB connection
 if (process.env.MONGODB_URI) {

@@ -1,9 +1,10 @@
 version: '3.8'
 
-# All credentials below come from env vars with dev-only fallbacks.
-# Copy .env.example to .env and override locally before `docker compose up`.
-# In production (Render etc.) set MONGO_INITDB_ROOT_PASSWORD and JWT_SECRET
-# in the platform's env-var UI; never ship the literal defaults below.
+# Credentials have no defaults: copy .env.example to .env and fill in
+# MONGO_INITDB_ROOT_USERNAME, MONGO_INITDB_ROOT_PASSWORD and JWT_SECRET
+# before `docker compose up`, or compose refuses to start. The API runs
+# with NODE_ENV=production unless .env overrides it, so the server's
+# JWT_SECRET check applies. MongoDB is published on 127.0.0.1 only.
 
 services:
   mongodb:
@@ -11,10 +12,10 @@ services:
     container_name: financial-tracker-db
     restart: always
     ports:
-      - "27017:27017"
+      - "127.0.0.1:27017:27017"
     environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:-admin}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:-dev-only-change-me}
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:?set MONGO_INITDB_ROOT_USERNAME in .env}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:?set MONGO_INITDB_ROOT_PASSWORD in .env}
       MONGO_INITDB_DATABASE: financial-tracker
     volumes:
       - mongodb_data:/data/db
@@ -29,16 +30,15 @@ services:
       - "5000:5000"
     environment:
       PORT: 5000
-      MONGODB_URI: mongodb://${MONGO_INITDB_ROOT_USERNAME:-admin}:${MONGO_INITDB_ROOT_PASSWORD:-dev-only-change-me}@mongodb:27017/financial-tracker?authSource=admin
-      JWT_SECRET: ${JWT_SECRET:-dev-only-change-me-in-prod}
-      NODE_ENV: ${NODE_ENV:-development}
+      MONGODB_URI: mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@mongodb:27017/financial-tracker?authSource=admin
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env (openssl rand -hex 32)}
+      NODE_ENV: ${NODE_ENV:-production}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000}
     depends_on:
       - mongodb
     volumes:
       - ./backend:/app
       - /app/node_modules
-      - uploads:/app/uploads
     networks:
       - financial-tracker-network
 
@@ -49,7 +49,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      REACT_APP_API_URL: http://localhost:5000
+      REACT_APP_API_URL: http://localhost:5000/api
     depends_on:
       - backend
     volumes:
@@ -60,7 +60,6 @@ services:
 
 volumes:
   mongodb_data:
-  uploads:
 
 networks:
   financial-tracker-network:

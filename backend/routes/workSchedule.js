@@ -2,7 +2,9 @@ const express = require('express');
 const router = express.Router();
 const WorkSchedule = require('../models/WorkSchedule');
 const Transaction = require('../models/Transaction');
+const Account = require('../models/Account');
 const auth = require('../middleware/auth');
+const { convert } = require('../utils/currencyConverter');
 
 // Get work schedule
 router.get('/', auth, async (req, res) => {
@@ -28,7 +30,16 @@ router.get('/', auth, async (req, res) => {
 router.post('/', auth, async (req, res) => {
   try {
     const { date, position, hourlyRate, startTime, endTime, tips, notes, accountId } = req.body;
-    
+
+    // Earnings are only booked to an account the caller owns.
+    let account = null;
+    if (accountId) {
+      account = await Account.findOne({ _id: accountId, user: req.userId });
+      if (!account) {
+        return res.status(404).json({ error: 'Account not found' });
+      }
+    }
+
     // Calculate hours worked
     const start = new Date(`2000-01-01 ${startTime}`);
     const end = new Date(`2000-01-01 ${endTime}`);
@@ -55,7 +66,7 @@ router.post('/', auth, async (req, res) => {
     await workEntry.save();
 
     // Create transactions for earnings
-    if (accountId) {
+    if (account) {
       // Regular earnings transaction
       await new Transaction({
         user: req.userId,
@@ -85,6 +96,13 @@ router.post('/', auth, async (req, res) => {
           date: new Date(date),
         }).save();
       }
+
+      // Move the balance by the USD pay booked above, in the account's currency.
+      const booked = tips > 0 ? totalEarnings : regularEarnings;
+      await Account.updateOne(
+        { _id: account._id },
+        { $inc: { balance: convert(booked, 'USD', account.currency) } }
+      );
     }
 
     res.json(workEntry);

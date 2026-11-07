@@ -15,6 +15,19 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// The token expired or was revoked: drop it and go back to the login screen.
+// A failed login sends no token, so it is left to the caller.
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401 && error.config?.headers?.Authorization) {
+      localStorage.removeItem('token');
+      window.location.assign('/');
+    }
+    return Promise.reject(error);
+  }
+);
+
 export const auth = {
   login: (credentials) => api.post('/auth/login', credentials),
   register: (userData) => api.post('/auth/register', userData),

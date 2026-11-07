@@ -1,12 +1,11 @@
 const csv = require('csv-parser');
-const fs = require('fs');
-const XLSX = require('xlsx');
-const pdf = require('pdf-parse');
+const ExcelJS = require('exceljs');
+const { Readable } = require('stream');
 
-const parseCSV = (filePath) => {
+const parseCSV = (buffer) => {
   return new Promise((resolve, reject) => {
     const results = [];
-    fs.createReadStream(filePath)
+    Readable.from(buffer)
       .pipe(csv())
       .on('data', (data) => results.push(data))
       .on('end', () => resolve(results))
@@ -14,31 +13,43 @@ const parseCSV = (filePath) => {
   });
 };
 
-const parseExcel = (filePath) => {
-  const workbook = XLSX.readFile(filePath);
-  const sheetName = workbook.SheetNames[0];
-  const worksheet = workbook.Sheets[sheetName];
-  return XLSX.utils.sheet_to_json(worksheet);
+// Formula, rich-text and hyperlink cells come back as objects; keep the shown value.
+const cellValue = (value) => {
+  if (value === null || typeof value !== 'object' || value instanceof Date) return value;
+  if ('result' in value) return value.result;
+  if (value.richText) return value.richText.map((part) => part.text).join('');
+  if ('text' in value) return value.text;
+  return value;
 };
 
-const parsePDF = async (filePath) => {
-  const dataBuffer = fs.readFileSync(filePath);
-  const data = await pdf(dataBuffer);
-  // Basic parsing - you'll need to implement specific logic based on your bank's format
-  return data.text;
+// Rows of the first worksheet as objects keyed by the header row.
+const parseExcel = async (buffer) => {
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(buffer);
+  const sheet = workbook.worksheets[0];
+  if (!sheet) return [];
+
+  const headers = sheet.getRow(1).values.map((h) => String(cellValue(h)).trim());
+  const rows = [];
+  sheet.eachRow((row, rowNumber) => {
+    if (rowNumber === 1) return;
+    const record = {};
+    row.eachCell((cell, column) => {
+      if (headers[column]) record[headers[column]] = cellValue(cell.value);
+    });
+    rows.push(record);
+  });
+  return rows;
 };
 
-const parseStatement = async (filePath, fileType) => {
+const parseStatement = async (buffer, fileType) => {
   switch (fileType) {
     case 'csv':
-      return parseCSV(filePath);
+      return parseCSV(buffer);
     case 'xlsx':
-    case 'xls':
-      return parseExcel(filePath);
-    case 'pdf':
-      return parsePDF(filePath);
+      return parseExcel(buffer);
     default:
-      throw new Error('Unsupported file type');
+      throw new Error('Unsupported file type; export the statement as CSV or XLSX');
   }
 };
 

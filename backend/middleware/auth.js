@@ -8,7 +8,9 @@ module.exports = (req, res, next) => {
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    // maxAge is checked against iat, so tokens issued before they carried
+    // exp expire too, without rotating JWT_SECRET.
+    const decoded = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ['HS256'], maxAge: '12h' });
     req.userId = decoded.userId;
     next();
   } catch (error) {

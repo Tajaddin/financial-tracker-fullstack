@@ -46,17 +46,18 @@ The borrowings model handles money you owe and money owed to you. The work sched
 
 Frontend: React 19, JSX, Material UI v7, Recharts, React Router v7, axios.
 
-Backend: Node.js 18+, Express 5, Mongoose, MongoDB, jsonwebtoken, bcryptjs.
+Backend: Node.js 18+ (22+ for `npm test`), Express 5, Mongoose, MongoDB, jsonwebtoken, bcryptjs.
 
 Infrastructure: Docker Compose (mongo, backend, frontend), Dockerfile per service, nginx in front of the build for production.
 
 ## Run with Docker Compose
 
 ```
-docker-compose up
+cp .env.example .env       # set MONGO_INITDB_ROOT_PASSWORD and JWT_SECRET
+docker compose up
 ```
 
-The compose file brings up MongoDB, the API on port 5000, and the React dev server on port 3000.
+The compose file brings up MongoDB (published on 127.0.0.1 only), the API on port 5000 with NODE_ENV=production, and the React dev server on port 3000. It refuses to start until the MongoDB credentials and JWT_SECRET are set.
 
 ## Run locally
 
@@ -65,8 +66,9 @@ Backend:
 ```
 cd backend
 npm install
-cp .env.example .env       # set MONGODB_URI and JWT_SECRET
+cp ../.env.example .env    # set MONGODB_URI and JWT_SECRET
 npm start
+npm test                   # API tests against an in-memory MongoDB
 ```
 
 Frontend:
@@ -84,11 +86,13 @@ App at http://localhost:3000.
 ```
 financial-tracker-fullstack/
   backend/
-    server.js              Express app, route mount, JWT middleware
+    app.js                 Express app and route mounts
+    server.js              Config checks, MongoDB connection, listen
     models/                User, Account, Transaction, Borrowing, WorkSchedule
     routes/                One file per resource
-    middleware/            Auth check, error handler
+    middleware/            JWT check, security headers, rate limits, body sanitizing
     utils/                 Helpers
+    test/                  API tests (node:test, supertest, mongodb-memory-server)
     Dockerfile
   frontend/
     src/
@@ -103,9 +107,12 @@ financial-tracker-fullstack/
 ## Auth flow
 
 1. Frontend posts credentials to `POST /api/auth/login`.
-2. Backend verifies the bcrypt hash and returns a signed JWT.
+2. Backend verifies the bcrypt hash and returns an HS256 JWT that expires after 12 hours.
 3. The axios client in `services/api.js` injects `Authorization: Bearer <jwt>` on every request.
-4. The Express middleware in `backend/middleware/` rejects unauthenticated requests.
+4. The Express middleware in `backend/middleware/` rejects unauthenticated requests, tokens issued more than 12 hours ago (including old tokens without an expiry) and tokens signed with any other algorithm.
+5. On a 401 the client drops the stored token and returns to the login screen.
+
+Rate limits, per client IP: 1000 API requests and 5 failed logins or registrations per 15-minute window. Over either limit the API answers 429 with a JSON `error`.
 
 ## License
 
